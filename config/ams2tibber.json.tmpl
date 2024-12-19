@@ -1,0 +1,16 @@
+{
+ "mqtt_broker": "192.168.0.12",
+ "mqtt_port": 1883,
+ "mqtt_ams_sub": "amsreader",
+ "mqtt_tibber_sub": "tibber-pulse-<UUID>/receive",
+ "mqtt_tibber_pub": "$aws/rules/push_to_kinesis/tibber-pulse-<UUID>/publish",
+ "mqtt_username": "<username>",
+ "mqtt_password": "<password>",
+ "hdlc_meter_list": "Kamstrup_V0001",
+ "hdlc_meter_id": "<Meter ID>",
+ "hdlc_meter_type": "<Meter Type Code>",
+ "hdlc_target_address": <target address in decimal, e.g. 0x15 -> 21>,
+ "hdlc_source_address": <source address in decimal, e.g. 0x10 -> 16>,
+ "pulse_ip": "<IP from Wifi>",
+ "pulse_id": "<MAC from Wifi without ':'>"
+}
