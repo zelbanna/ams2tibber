@@ -1,5 +1,6 @@
 .git
 .gitignore
+*.json
 __pycache__
 .pylintrc
 dist
