@@ -12,7 +12,7 @@ by reading the "right" topic and publish into the refleced topic that will end u
 
 """
 __author__ = "Zacharias El Banna"
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __all__ = ['mqtt']
 from modules.hdlc import HDLC
 from paho.mqtt import client as mqtt_client
@@ -29,7 +29,7 @@ from sys import exit, stderr
 # 
 #
 
-def mqtt(aHdlc: HDLC, **kwargs):
+def mqtt(aHdlc: HDLC, aDebug: bool, **kwargs):
   #aUsername: str, aPassword: str, aBroker: str, aPort: int, aSub: str):
  ''' MQTT:
   - Monitor MQTT and resend data in byte format to tibber using the MQTT bridge
@@ -81,25 +81,35 @@ def mqtt(aHdlc: HDLC, **kwargs):
 
  #
  def on_ams_message(client, userdata, msg, properties = None):
-  ''' On Message: subscribe to AMS reader messages and reformat into Tibber Pulse '''
+  ''' On Message: subscribe to AMS reader messages and reformat into Tibber Pulse
+
+  TODO: Use, since 2.4.0, the dict entry to convert time from device -> "t" (UTC) or "rtc" (localtime) -> "2025-02-03T10:45:00Z"
+
+  '''
   try:
    # stderr.write(f"Payload: {msg.payload.decode()} from {msg.topic}\n")
    topic = msg.topic.rpartition('/')[2]
    payload = msg.payload.decode()
    if topic == 'power' or topic == 'energy':
-    date = aHdlc.create_datetime(adjust = topic)
+    # Convert message to payload and check date
+    converted = loads(payload)
+    date = aHdlc.create_datetime(converted['t'])
     if aHdlc.check_datetime(topic,date):
-     parsed = aHdlc.load_msg(loads(payload), topic, date)
+     parsed = aHdlc.load_msg(converted, topic)
      output = aHdlc.create_frame(parsed,date)
-     #stderr.write(f"{strftime('%Y-%m-%d %H:%M:%S', localtime())}: {topic} : {output.hex().upper()}\n")
-     client.publish(topic_publish.format(topic),output,2,properties=properties);
+     if not aDebug:
+      client.publish(topic_publish.format(topic),output,2,properties=properties);
+     else:
+      stderr.write(f"{strftime('%Y-%m-%d %H:%M:%S', localtime())}: {topic} : {output.hex().upper()}\n")
     else:
-     pass
-     #stderr.write(f"{strftime('%Y-%m-%d %H:%M:%S', localtime())}: {topic} : DUPLICATE TIME\n")
+     if aDebug:
+      stderr.write(f"{strftime('%Y-%m-%d %H:%M:%S', localtime())}: {topic} : DUPLICATE TIME\n")
    elif topic == 'state':
     output = dumps(aHdlc.create_state(loads(payload)))
-    #stderr.write(f"{strftime('%Y-%m-%d %H:%M:%S', localtime())}: state : {output}\n")
-    client.publish(topic_publish.format(topic),output,2,properties=properties);
+    if not aDebug:
+     client.publish(topic_publish.format(topic),output,2,properties=properties);
+    else:
+     stderr.write(f"{strftime('%Y-%m-%d %H:%M:%S', localtime())}: state : {output}\n")
    elif topic == 'realtime' or topic == 'prices':
     pass
    elif topic == 'status':

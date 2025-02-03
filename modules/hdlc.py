@@ -2,15 +2,14 @@
 # -*- coding: utf-8 -*-
 """ HDLC converter class """
 __author__ = "Zacharias El Banna"
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __all__ = ['HDLC']
 from random import randint
-from time import localtime, strftime
+from datetime import datetime
 from json import loads
+from sys import stderr
 
 ################################################## HDLC ################################################
-#
-# TODO: Await timestamp within packet (!)
 #
 class HDLC:
  ''' HDLC class with proper methods to convert AMSreader data into Kamstrup OBIS format '''
@@ -76,23 +75,11 @@ class HDLC:
   return loads(line)
 
  #
- def create_datetime(self, **kwargs):
-  ''' For lack of better way to create a DLMS datetime octet string...
-
-    - Either use a preconfigured string: 'date' or use localtime and possibly
-    - Adjust time stamp accordingly
-
-  '''
-  date = strftime('%Y-%m-%d-%w-%H-%M-%S', localtime()).split('-') if not kwargs.get('date') else kwargs['date'].split('-')
-  if kwargs.get('adjust'):
-   if kwargs['adjust'] == 'power':
-    date[6] = f"{date[6][0]}0"
-   else:
-    date[5] = "00"
-    date[6] = "55"
-  ret = bytearray(int(date[0]).to_bytes(2)) # Year
-  for x in range (1,7):  # Month, Day, DoW, Hour, Min, Sec
-   ret.append(int(date[x]))
+ def create_datetime(self, rtc: str):
+  ''' Create a DLMS datetime octet string from submitted datetimestamp... as 'rtc' '''
+  dts = datetime.strptime(rtc,'%Y-%m-%dT%H:%M:%SZ')
+  ret = bytearray(dts.year.to_bytes(2)) # Year
+  ret.extend([dts.month,dts.day,dts.isoweekday(),dts.hour,dts.minute,dts.second]) # The rest
   ret.extend(b'\xff\x80\x00\x00') # Ctrl, UTC?
   return ret
 
@@ -105,7 +92,7 @@ class HDLC:
    return True
 
  #
- def load_msg(self, aMessage: dict, aTopic: str, aDateTime: bytes = None):
+ def load_msg(self, aMessage: dict, aTopic: str):
   ''' Main message creator, parse the AMS reader dictionary and push relevant OBIS entries '''
   if aTopic == 'power':
    self._power = [
@@ -125,9 +112,10 @@ class HDLC:
    ]
    parsed = self._power
   elif aTopic == 'energy':
-   self._energy = self._power.copy() # Copy, don't use reference/ptr.
+   self._energy = self._power.copy() # Copy, don't use reference/ptr. contains above info
+   dts = self.create_datetime(aMessage['rtc'])
    self._energy.extend([
-    ("09","0001010000FF"),("09",aDateTime.hex()),
+    ("09","0001010000FF"),("09",dts.hex()),
     ("09","0101010800FF"),("06",int(aMessage['tPI']*1000)),
     ("09","0101020800FF"),("06",int(aMessage['tPO']*1000)),
     ("09","0101030800FF"),("06",int(aMessage['tQI']*1000)),

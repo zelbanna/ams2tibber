@@ -32,7 +32,7 @@ if __name__ == '__main__':
  parser.add_argument('-c','--config', help = 'Config file',default = '/etc/ams2tibber/config.json', required=False)
  parser.add_argument('-d','--debug', help = 'Debug output', required = False, action='store_true')
  input = parser.parse_args()
- stderr.write(f'main: Starting\n')
+ stderr.write(f'main: Starting\n' if not input.debug else f'main: Starting in debug mode\n')
 
  if not input.config:
   parser.print_help()
@@ -62,6 +62,6 @@ if __name__ == '__main__':
  for sig in [SIGTERM,SIGINT]:
   signal(sig, signal_handler)
  hdlc = HDLC(**config)
- client = mqtt(hdlc, **config)
+ client = mqtt(hdlc, input.debug, **config)
  client.loop_forever()
  exit(0)
